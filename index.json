@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "name": "Lux Plugins Plus",
+  "description": "第三方增强插件目录：org.lux.tmdb-plus（TMDb 元数据增强）",
+  "plugins": [{
+    "id": "org.lux.tmdb-plus",
+    "name": "TMDb 元数据增强",
+    "description": "在 TMDb 元数据之上提供剧集组刮削、原语言海报优先与中文别名搜索增强（复刻 Emby StrmAssistant 能力的 Lux 版本）。",
+    "category": "SCRAPER",
+    "version": "0.1.0",
+    "runtime": "process",
+    "providerKey": "tmdb",
+    "aliases": ["tmdb"],
+    "capabilities": ["metadata.search", "metadata.get", "metadata.bundle", "metadata.images", "metadata.credits", "metadata.externalIds", "metadata.trailers"],
+    "packages": [{
+      "platform": "linux",
+      "arch": "x86_64",
+      "url": "https://github.com/USBVillage/Lux-plugins-plus/releases/download/org.lux.tmdb-plus/org.lux.tmdb-plus-0.1.0-linux-x86_64.zip",
+      "sha256": "23972fdfe1901dc193d28b61933ad346ea116d5d0695eaedac542e037fb8939f"
+    }, {
+      "platform": "linux",
+      "arch": "aarch64",
+      "url": "https://github.com/USBVillage/Lux-plugins-plus/releases/download/org.lux.tmdb-plus/org.lux.tmdb-plus-0.1.0-linux-aarch64.zip",
+      "sha256": "238377f7ef047b610378e8b2e4c8b49821788663386d58ff19362c2d334b54fd"
+    }]
+  }]
+}

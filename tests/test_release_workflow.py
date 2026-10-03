@@ -1,0 +1,296 @@
+import json
+import os
+import stat
+import subprocess
+import sys
+import tempfile
+import unittest
+from urllib.parse import urlsplit
+from pathlib import Path
+from zipfile import ZIP_DEFLATED, ZipFile
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PUBLISH_SCRIPT = ROOT / "scripts" / "publish-releases.py"
+INDEX_SCRIPT = ROOT / "scripts" / "generate-index.py"
+
+
+class ReleaseWorkflowTests(unittest.TestCase):
+    def test_login_background_sdk_fixtures_match_the_versioned_contract(self):
+        fixture_directory = ROOT / "tests/fixtures/login-background"
+        manifest = json.loads((fixture_directory / "manifest-v1.json").read_text())
+        self.assertEqual(manifest["formatVersion"], 1)
+        self.assertEqual(manifest["apiVersion"], 1)
+        self.assertEqual(manifest["type"], "login_background")
+        self.assertEqual(manifest["category"], "UTILITY")
+        self.assertEqual(manifest["capabilities"], ["login_background.get"])
+        image_hosts = set(manifest["permissions"]["imageHosts"])
+        network_hosts = set(manifest["permissions"].get("network", []))
+        self.assertTrue(image_hosts)
+
+        for fixture_name in (
+            "poster-feed-v1.json",
+            "hero-image-v1.json",
+            "single-poster-v1.json",
+            "single-image-v1.json",
+        ):
+            result = json.loads((fixture_directory / fixture_name).read_text())
+            self.assertLessEqual(
+                set(result),
+                {"contentKind", "sourceName", "copyrightNotice", "items"},
+            )
+            self.assertIn(
+                result["contentKind"],
+                {"POSTER_FEED", "HERO_IMAGE", "SINGLE_POSTER", "SINGLE_IMAGE"},
+            )
+            self.assertIsInstance(result["sourceName"], str)
+            self.assertLessEqual(len(result["items"]), 40)
+            if result["contentKind"] in {"HERO_IMAGE", "SINGLE_POSTER", "SINGLE_IMAGE"}:
+                self.assertEqual(len(result["items"]), 1)
+
+            for item in result["items"]:
+                self.assertLessEqual(
+                    set(item),
+                    {
+                        "imageUrl",
+                        "title",
+                        "copyrightNotice",
+                        "attributionUrl",
+                        "licenseUrl",
+                    },
+                )
+                image_url = item["imageUrl"]
+                parsed_url = urlsplit(image_url)
+                self.assertLessEqual(len(image_url.encode()), 2048)
+                self.assertEqual(parsed_url.scheme, "https")
+                self.assertIn(parsed_url.hostname, image_hosts)
+                self.assertIsNone(parsed_url.username)
+                self.assertIsNone(parsed_url.password)
+                self.assertFalse(parsed_url.fragment)
+
+                for field in ("attributionUrl", "licenseUrl"):
+                    if field not in item:
+                        continue
+                    parsed_link = urlsplit(item[field])
+                    self.assertEqual(parsed_link.scheme, "https")
+                    self.assertIn(parsed_link.hostname, network_hosts)
+                    self.assertIsNone(parsed_link.username)
+                    self.assertIsNone(parsed_link.password)
+                    self.assertIsNone(parsed_link.port)
+                    self.assertFalse(parsed_link.fragment)
+
+    def test_webhook_manifest_uses_notification_target_for_url_configuration(self):
+        manifest = json.loads((ROOT / "manifests/org.lux.webhook.json").read_text())
+        fields = {field["key"]: field for field in manifest["configFields"]}
+
+        self.assertNotIn("url", fields)
+        self.assertFalse(fields["bodyTemplate"]["required"])
+        self.assertEqual(fields["payloadFormat"]["defaultValue"], "LUX")
+
+    def test_tmdb_manifest_exposes_selectable_language_and_api_options(self):
+        manifest = json.loads((ROOT / "manifests/org.lux.tmdb.json").read_text())
+        fields = {field["key"]: field for field in manifest["configFields"]}
+
+        preferred_language = fields["preferredLanguage"]
+        self.assertEqual(preferred_language["type"], "select")
+        self.assertEqual(preferred_language["options"][0], {"value": "zh-CN", "label": "简体中文"})
+        self.assertEqual(
+            [option["value"] for option in preferred_language["options"][:3]],
+            ["zh-CN", "zh-TW", "en-US"],
+        )
+        preferred_values = [option["value"] for option in preferred_language["options"]]
+        self.assertEqual(len(preferred_values), 73)
+        self.assertEqual(len(preferred_values), len(set(preferred_values)))
+        self.assertEqual(sum(value.startswith("en-") for value in preferred_values), 1)
+        self.assertEqual(sum(value.startswith("zh-") for value in preferred_values), 2)
+        self.assertEqual(
+            preferred_language["options"][2]["label"],
+            "英语 (English)",
+        )
+
+        fallback_languages = fields["fallbackLanguages"]
+        self.assertEqual(fallback_languages["type"], "select")
+        self.assertTrue(fallback_languages["multiple"])
+        self.assertEqual(
+            [option["value"] for option in fallback_languages["options"][:3]],
+            ["zh-CN", "zh-TW", "en-US"],
+        )
+
+        api_base_url_preset = fields["apiBaseUrlPreset"]
+        self.assertEqual(api_base_url_preset["type"], "select")
+        self.assertEqual(
+            [option["value"] for option in api_base_url_preset["options"]],
+            ["official", "alternate", "custom"],
+        )
+
+        api_base_url = fields["apiBaseUrl"]
+        self.assertEqual(api_base_url["type"], "text")
+        self.assertEqual(api_base_url["defaultValue"], "https://api.themoviedb.org")
+        self.assertFalse(api_base_url["required"])
+
+    def test_publishes_each_plugin_to_its_own_release_and_reuses_existing_release(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            artifacts = temporary / "artifacts"
+            artifacts.mkdir()
+            write_package(
+                artifacts / "x86_64" / "org.lux.alpha-2.0.0-linux-x86_64.zip",
+                "org.lux.alpha",
+                "2.0.0",
+            )
+            write_package(
+                artifacts / "aarch64" / "org.lux.alpha-2.0.0-linux-aarch64.zip",
+                "org.lux.alpha",
+                "2.0.0",
+            )
+            write_package(
+                artifacts / "x86_64" / "org.lux.beta-1.0.0-linux-x86_64.zip",
+                "org.lux.beta",
+                "1.0.0",
+            )
+            write_package(
+                artifacts / "aarch64" / "org.lux.beta-1.0.0-linux-aarch64.zip",
+                "org.lux.beta",
+                "1.0.0",
+            )
+
+            log_path = temporary / "gh.jsonl"
+            state_path = temporary / "existing-releases.json"
+            state_path.write_text(json.dumps(["org.lux.alpha"]))
+            fake_gh = write_fake_gh(temporary / "gh", log_path, state_path)
+
+            environment = os.environ.copy()
+            environment["PATH"] = f"{fake_gh.parent}{os.pathsep}{environment['PATH']}"
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(PUBLISH_SCRIPT),
+                    "--artifacts",
+                    str(artifacts),
+                    "--repository",
+                    "Qoo-330ml/Lux-plugins",
+                    "--target",
+                    "commit-sha",
+                ],
+                cwd=ROOT,
+                env=environment,
+                check=True,
+            )
+
+            commands = [json.loads(line) for line in log_path.read_text().splitlines()]
+            self.assertEqual(commands[0], ["release", "view", "--repo", "Qoo-330ml/Lux-plugins", "org.lux.alpha"])
+            self.assertEqual(commands[1][0:4], ["release", "upload", "--repo", "Qoo-330ml/Lux-plugins"])
+            self.assertEqual(commands[1][4], "org.lux.alpha")
+            self.assertNotIn("--clobber", commands[1])
+            self.assertIn("org.lux.alpha-2.0.0-linux-x86_64.zip", package_names(commands[1]))
+            self.assertIn("org.lux.alpha-2.0.0-linux-aarch64.zip", package_names(commands[1]))
+
+            create_command = commands[3]
+            self.assertEqual(create_command[0:4], ["release", "create", "--repo", "Qoo-330ml/Lux-plugins"])
+            self.assertEqual(create_command[4], "org.lux.beta")
+            self.assertIn("--target", create_command)
+            self.assertIn("commit-sha", create_command)
+            self.assertIn("org.lux.beta-1.0.0-linux-x86_64.zip", package_names(create_command))
+            self.assertIn("org.lux.beta-1.0.0-linux-aarch64.zip", package_names(create_command))
+
+    def test_catalog_uses_the_plugin_release_tag_for_each_package(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            artifacts = temporary / "artifacts"
+            package = artifacts / "x86_64" / "org.lux.alpha-2.0.0-linux-x86_64.zip"
+            write_package(package, "org.lux.alpha", "2.0.0")
+            output = temporary / "index.json"
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(INDEX_SCRIPT),
+                    "--artifacts",
+                    str(artifacts),
+                    "--repository",
+                    "Qoo-330ml/Lux-plugins",
+                    "--output",
+                    str(output),
+                ],
+                cwd=ROOT,
+                check=True,
+            )
+
+            catalog = json.loads(output.read_text())
+            package_url = catalog["plugins"][0]["packages"][0]["url"]
+            self.assertEqual(
+                package_url,
+                "https://github.com/Qoo-330ml/Lux-plugins/releases/download/"
+                "org.lux.alpha/org.lux.alpha-2.0.0-linux-x86_64.zip",
+            )
+
+    def test_publish_script_rejects_empty_artifact_directory(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(PUBLISH_SCRIPT),
+                    "--artifacts",
+                    temporary_directory,
+                    "--repository",
+                    "Qoo-330ml/Lux-plugins",
+                    "--target",
+                    "commit-sha",
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("no plugin packages found", result.stderr)
+
+
+def write_package(path: Path, plugin_id: str, version: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    manifest = {
+        "id": plugin_id,
+        "name": plugin_id,
+        "description": "test plugin",
+        "version": version,
+        "category": "TEST",
+        "runtime": {"kind": "process"},
+        "capabilities": [],
+    }
+    with ZipFile(path, "w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("manifest.json", json.dumps(manifest))
+
+
+def package_names(command: list[str]) -> list[str]:
+    return [Path(argument).name for argument in command if argument.endswith(".zip")]
+
+
+def write_fake_gh(path: Path, log_path: Path, state_path: Path) -> Path:
+    path.write_text(
+        """#!/usr/bin/env python3
+import json
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+log_path = Path(%r)
+state_path = Path(%r)
+with log_path.open("a") as log:
+    log.write(json.dumps(args) + "\\n")
+
+command = args[0:2]
+tag = args[4] if len(args) > 4 and args[2:4] == ["--repo", "Qoo-330ml/Lux-plugins"] else ""
+state = json.loads(state_path.read_text())
+if command == ["release", "view"]:
+    raise SystemExit(0 if tag in state else 1)
+if command == ["release", "create"]:
+    state.append(tag)
+    state_path.write_text(json.dumps(state))
+""" % (str(log_path), str(state_path))
+    )
+    path.chmod(path.stat().st_mode | stat.S_IXUSR)
+    return path
+
+
+if __name__ == "__main__":
+    unittest.main()

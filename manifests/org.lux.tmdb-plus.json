@@ -1,0 +1,766 @@
+{
+  "formatVersion": 1,
+  "id": "org.lux.tmdb-plus",
+  "name": "TMDb 元数据增强",
+  "description": "在 TMDb 元数据之上提供剧集组刮削、原语言海报优先与中文别名搜索增强（复刻 Emby StrmAssistant 能力的 Lux 版本）。",
+  "version": "__VERSION__",
+  "apiVersion": 1,
+  "runtime": {
+    "kind": "process",
+    "entrypoint": "__ENTRYPOINT__"
+  },
+  "type": "metadata",
+  "category": "SCRAPER",
+  "providerKey": "tmdb",
+  "aliases": [
+    "tmdb"
+  ],
+  "supportedItemTypes": [
+    "Movie",
+    "Series",
+    "Season",
+    "Episode",
+    "Person",
+    "BoxSet"
+  ],
+  "capabilities": [
+    "metadata.search",
+    "metadata.get",
+    "metadata.bundle",
+    "metadata.images",
+    "metadata.credits",
+    "metadata.externalIds",
+    "metadata.trailers"
+  ],
+  "configFields": [
+    {
+      "key": "apiKey",
+      "label": "TMDb API Key",
+      "type": "password",
+      "required": false,
+      "sensitive": true,
+      "description": "可选。留空时使用 TMDb 插件自己的默认凭据。"
+    },
+    {
+      "key": "readAccessToken",
+      "label": "TMDb Read Access Token",
+      "type": "password",
+      "required": false,
+      "sensitive": true,
+      "description": "可选。兼容历史 TMDb v4 Read Access Token。"
+    },
+    {
+      "key": "preferredLanguage",
+      "label": "首选语言",
+      "type": "select",
+      "required": false,
+      "sensitive": false,
+      "defaultValue": "zh-CN",
+      "description": "按语言组选择；同一语言的地区变体会在一次 TMDb 翻译响应中本地择优。",
+      "options": [
+        {
+          "value": "zh-CN",
+          "label": "简体中文"
+        },
+        {
+          "value": "zh-TW",
+          "label": "繁體中文"
+        },
+        {
+          "value": "en-US",
+          "label": "英语 (English)"
+        },
+        {
+          "value": "af-ZA",
+          "label": "南非荷兰语 (Afrikaans)"
+        },
+        {
+          "value": "ar-SA",
+          "label": "阿拉伯语 (Arabic)"
+        },
+        {
+          "value": "be-BY",
+          "label": "白俄罗斯语 (Belarusian)"
+        },
+        {
+          "value": "bg-BG",
+          "label": "保加利亚语 (Bulgarian)"
+        },
+        {
+          "value": "bn-BD",
+          "label": "孟加拉语 (Bengali)"
+        },
+        {
+          "value": "br-FR",
+          "label": "布列塔尼语 (Breton)"
+        },
+        {
+          "value": "ca-ES",
+          "label": "加泰罗尼亚语 (Catalan)"
+        },
+        {
+          "value": "ch-GU",
+          "label": "查莫罗语 (Chamorro)"
+        },
+        {
+          "value": "cs-CZ",
+          "label": "捷克语 (Czech)"
+        },
+        {
+          "value": "cy-GB",
+          "label": "威尔士语 (Welsh)"
+        },
+        {
+          "value": "da-DK",
+          "label": "丹麦语 (Danish)"
+        },
+        {
+          "value": "de-DE",
+          "label": "德语 (German)"
+        },
+        {
+          "value": "el-GR",
+          "label": "希腊语 (Greek)"
+        },
+        {
+          "value": "eo-EO",
+          "label": "世界语 (Esperanto)"
+        },
+        {
+          "value": "es-ES",
+          "label": "西班牙语 (Spanish)"
+        },
+        {
+          "value": "et-EE",
+          "label": "爱沙尼亚语 (Estonian)"
+        },
+        {
+          "value": "eu-ES",
+          "label": "巴斯克语 (Basque)"
+        },
+        {
+          "value": "fa-IR",
+          "label": "波斯语 (Persian)"
+        },
+        {
+          "value": "fi-FI",
+          "label": "芬兰语 (Finnish)"
+        },
+        {
+          "value": "fr-FR",
+          "label": "法语 (French)"
+        },
+        {
+          "value": "ga-IE",
+          "label": "爱尔兰语 (Irish)"
+        },
+        {
+          "value": "gd-GB",
+          "label": "苏格兰盖尔语 (Scottish Gaelic)"
+        },
+        {
+          "value": "gl-ES",
+          "label": "加利西亚语 (Galician)"
+        },
+        {
+          "value": "he-IL",
+          "label": "希伯来语 (Hebrew)"
+        },
+        {
+          "value": "hi-IN",
+          "label": "印地语 (Hindi)"
+        },
+        {
+          "value": "hr-HR",
+          "label": "克罗地亚语 (Croatian)"
+        },
+        {
+          "value": "hu-HU",
+          "label": "匈牙利语 (Hungarian)"
+        },
+        {
+          "value": "hy-AM",
+          "label": "亚美尼亚语 (Armenian)"
+        },
+        {
+          "value": "id-ID",
+          "label": "印度尼西亚语 (Indonesian)"
+        },
+        {
+          "value": "it-IT",
+          "label": "意大利语 (Italian)"
+        },
+        {
+          "value": "ja-JP",
+          "label": "日语 (Japanese)"
+        },
+        {
+          "value": "ka-GE",
+          "label": "格鲁吉亚语 (Georgian)"
+        },
+        {
+          "value": "kk-KZ",
+          "label": "哈萨克语 (Kazakh)"
+        },
+        {
+          "value": "kn-IN",
+          "label": "卡纳达语 (Kannada)"
+        },
+        {
+          "value": "ko-KR",
+          "label": "韩语 (Korean)"
+        },
+        {
+          "value": "ku-TR",
+          "label": "库尔德语 (Kurdish)"
+        },
+        {
+          "value": "ky-KG",
+          "label": "吉尔吉斯语 (Kyrgyz)"
+        },
+        {
+          "value": "lt-LT",
+          "label": "立陶宛语 (Lithuanian)"
+        },
+        {
+          "value": "lv-LV",
+          "label": "拉脱维亚语 (Latvian)"
+        },
+        {
+          "value": "ml-IN",
+          "label": "马拉雅拉姆语 (Malayalam)"
+        },
+        {
+          "value": "mr-IN",
+          "label": "马拉地语 (Marathi)"
+        },
+        {
+          "value": "ms-MY",
+          "label": "马来语 (Malay)"
+        },
+        {
+          "value": "nb-NO",
+          "label": "挪威语（书面挪威语） (Norwegian Bokmål)"
+        },
+        {
+          "value": "ne-NP",
+          "label": "尼泊尔语 (Nepali)"
+        },
+        {
+          "value": "nl-NL",
+          "label": "荷兰语 (Dutch)"
+        },
+        {
+          "value": "no-NO",
+          "label": "挪威语 (Norwegian)"
+        },
+        {
+          "value": "oc-FR",
+          "label": "奥克语 (Occitan)"
+        },
+        {
+          "value": "pa-IN",
+          "label": "旁遮普语 (Punjabi)"
+        },
+        {
+          "value": "pl-PL",
+          "label": "波兰语 (Polish)"
+        },
+        {
+          "value": "pt-BR",
+          "label": "葡萄牙语 (Portuguese)"
+        },
+        {
+          "value": "ro-RO",
+          "label": "罗马尼亚语 (Romanian)"
+        },
+        {
+          "value": "ru-RU",
+          "label": "俄语 (Russian)"
+        },
+        {
+          "value": "si-LK",
+          "label": "僧伽罗语 (Sinhala)"
+        },
+        {
+          "value": "sk-SK",
+          "label": "斯洛伐克语 (Slovak)"
+        },
+        {
+          "value": "sl-SI",
+          "label": "斯洛文尼亚语 (Slovenian)"
+        },
+        {
+          "value": "so-SO",
+          "label": "索马里语 (Somali)"
+        },
+        {
+          "value": "sq-AL",
+          "label": "阿尔巴尼亚语 (Albanian)"
+        },
+        {
+          "value": "sr-RS",
+          "label": "塞尔维亚语 (Serbian)"
+        },
+        {
+          "value": "sv-SE",
+          "label": "瑞典语 (Swedish)"
+        },
+        {
+          "value": "sw-TZ",
+          "label": "斯瓦希里语 (Swahili)"
+        },
+        {
+          "value": "ta-IN",
+          "label": "泰米尔语 (Tamil)"
+        },
+        {
+          "value": "te-IN",
+          "label": "泰卢固语 (Telugu)"
+        },
+        {
+          "value": "th-TH",
+          "label": "泰语 (Thai)"
+        },
+        {
+          "value": "tl-PH",
+          "label": "菲律宾语 (Filipino)"
+        },
+        {
+          "value": "tr-TR",
+          "label": "土耳其语 (Turkish)"
+        },
+        {
+          "value": "uk-UA",
+          "label": "乌克兰语 (Ukrainian)"
+        },
+        {
+          "value": "ur-PK",
+          "label": "乌尔都语 (Urdu)"
+        },
+        {
+          "value": "uz-UZ",
+          "label": "乌兹别克语 (Uzbek)"
+        },
+        {
+          "value": "vi-VN",
+          "label": "越南语 (Vietnamese)"
+        },
+        {
+          "value": "zu-ZA",
+          "label": "祖鲁语 (Zulu)"
+        }
+      ]
+    },
+    {
+      "key": "languageFallbackEnabled",
+      "label": "语言回退",
+      "type": "toggle",
+      "required": false,
+      "sensitive": false,
+      "defaultValue": false,
+      "description": "按语言组顺序逐字段补全缺失元数据；每个详情只请求一次，地区变体在本地择优。"
+    },
+    {
+      "key": "fallbackLanguages",
+      "label": "备选语言顺序",
+      "type": "select",
+      "multiple": true,
+      "required": false,
+      "sensitive": false,
+      "options": [
+        {
+          "value": "zh-CN",
+          "label": "简体中文"
+        },
+        {
+          "value": "zh-TW",
+          "label": "繁體中文"
+        },
+        {
+          "value": "en-US",
+          "label": "英语 (English)"
+        },
+        {
+          "value": "af-ZA",
+          "label": "南非荷兰语 (Afrikaans)"
+        },
+        {
+          "value": "ar-SA",
+          "label": "阿拉伯语 (Arabic)"
+        },
+        {
+          "value": "be-BY",
+          "label": "白俄罗斯语 (Belarusian)"
+        },
+        {
+          "value": "bg-BG",
+          "label": "保加利亚语 (Bulgarian)"
+        },
+        {
+          "value": "bn-BD",
+          "label": "孟加拉语 (Bengali)"
+        },
+        {
+          "value": "br-FR",
+          "label": "布列塔尼语 (Breton)"
+        },
+        {
+          "value": "ca-ES",
+          "label": "加泰罗尼亚语 (Catalan)"
+        },
+        {
+          "value": "ch-GU",
+          "label": "查莫罗语 (Chamorro)"
+        },
+        {
+          "value": "cs-CZ",
+          "label": "捷克语 (Czech)"
+        },
+        {
+          "value": "cy-GB",
+          "label": "威尔士语 (Welsh)"
+        },
+        {
+          "value": "da-DK",
+          "label": "丹麦语 (Danish)"
+        },
+        {
+          "value": "de-DE",
+          "label": "德语 (German)"
+        },
+        {
+          "value": "el-GR",
+          "label": "希腊语 (Greek)"
+        },
+        {
+          "value": "eo-EO",
+          "label": "世界语 (Esperanto)"
+        },
+        {
+          "value": "es-ES",
+          "label": "西班牙语 (Spanish)"
+        },
+        {
+          "value": "et-EE",
+          "label": "爱沙尼亚语 (Estonian)"
+        },
+        {
+          "value": "eu-ES",
+          "label": "巴斯克语 (Basque)"
+        },
+        {
+          "value": "fa-IR",
+          "label": "波斯语 (Persian)"
+        },
+        {
+          "value": "fi-FI",
+          "label": "芬兰语 (Finnish)"
+        },
+        {
+          "value": "fr-FR",
+          "label": "法语 (French)"
+        },
+        {
+          "value": "ga-IE",
+          "label": "爱尔兰语 (Irish)"
+        },
+        {
+          "value": "gd-GB",
+          "label": "苏格兰盖尔语 (Scottish Gaelic)"
+        },
+        {
+          "value": "gl-ES",
+          "label": "加利西亚语 (Galician)"
+        },
+        {
+          "value": "he-IL",
+          "label": "希伯来语 (Hebrew)"
+        },
+        {
+          "value": "hi-IN",
+          "label": "印地语 (Hindi)"
+        },
+        {
+          "value": "hr-HR",
+          "label": "克罗地亚语 (Croatian)"
+        },
+        {
+          "value": "hu-HU",
+          "label": "匈牙利语 (Hungarian)"
+        },
+        {
+          "value": "hy-AM",
+          "label": "亚美尼亚语 (Armenian)"
+        },
+        {
+          "value": "id-ID",
+          "label": "印度尼西亚语 (Indonesian)"
+        },
+        {
+          "value": "it-IT",
+          "label": "意大利语 (Italian)"
+        },
+        {
+          "value": "ja-JP",
+          "label": "日语 (Japanese)"
+        },
+        {
+          "value": "ka-GE",
+          "label": "格鲁吉亚语 (Georgian)"
+        },
+        {
+          "value": "kk-KZ",
+          "label": "哈萨克语 (Kazakh)"
+        },
+        {
+          "value": "kn-IN",
+          "label": "卡纳达语 (Kannada)"
+        },
+        {
+          "value": "ko-KR",
+          "label": "韩语 (Korean)"
+        },
+        {
+          "value": "ku-TR",
+          "label": "库尔德语 (Kurdish)"
+        },
+        {
+          "value": "ky-KG",
+          "label": "吉尔吉斯语 (Kyrgyz)"
+        },
+        {
+          "value": "lt-LT",
+          "label": "立陶宛语 (Lithuanian)"
+        },
+        {
+          "value": "lv-LV",
+          "label": "拉脱维亚语 (Latvian)"
+        },
+        {
+          "value": "ml-IN",
+          "label": "马拉雅拉姆语 (Malayalam)"
+        },
+        {
+          "value": "mr-IN",
+          "label": "马拉地语 (Marathi)"
+        },
+        {
+          "value": "ms-MY",
+          "label": "马来语 (Malay)"
+        },
+        {
+          "value": "nb-NO",
+          "label": "挪威语（书面挪威语） (Norwegian Bokmål)"
+        },
+        {
+          "value": "ne-NP",
+          "label": "尼泊尔语 (Nepali)"
+        },
+        {
+          "value": "nl-NL",
+          "label": "荷兰语 (Dutch)"
+        },
+        {
+          "value": "no-NO",
+          "label": "挪威语 (Norwegian)"
+        },
+        {
+          "value": "oc-FR",
+          "label": "奥克语 (Occitan)"
+        },
+        {
+          "value": "pa-IN",
+          "label": "旁遮普语 (Punjabi)"
+        },
+        {
+          "value": "pl-PL",
+          "label": "波兰语 (Polish)"
+        },
+        {
+          "value": "pt-BR",
+          "label": "葡萄牙语 (Portuguese)"
+        },
+        {
+          "value": "ro-RO",
+          "label": "罗马尼亚语 (Romanian)"
+        },
+        {
+          "value": "ru-RU",
+          "label": "俄语 (Russian)"
+        },
+        {
+          "value": "si-LK",
+          "label": "僧伽罗语 (Sinhala)"
+        },
+        {
+          "value": "sk-SK",
+          "label": "斯洛伐克语 (Slovak)"
+        },
+        {
+          "value": "sl-SI",
+          "label": "斯洛文尼亚语 (Slovenian)"
+        },
+        {
+          "value": "so-SO",
+          "label": "索马里语 (Somali)"
+        },
+        {
+          "value": "sq-AL",
+          "label": "阿尔巴尼亚语 (Albanian)"
+        },
+        {
+          "value": "sr-RS",
+          "label": "塞尔维亚语 (Serbian)"
+        },
+        {
+          "value": "sv-SE",
+          "label": "瑞典语 (Swedish)"
+        },
+        {
+          "value": "sw-TZ",
+          "label": "斯瓦希里语 (Swahili)"
+        },
+        {
+          "value": "ta-IN",
+          "label": "泰米尔语 (Tamil)"
+        },
+        {
+          "value": "te-IN",
+          "label": "泰卢固语 (Telugu)"
+        },
+        {
+          "value": "th-TH",
+          "label": "泰语 (Thai)"
+        },
+        {
+          "value": "tl-PH",
+          "label": "菲律宾语 (Filipino)"
+        },
+        {
+          "value": "tr-TR",
+          "label": "土耳其语 (Turkish)"
+        },
+        {
+          "value": "uk-UA",
+          "label": "乌克兰语 (Ukrainian)"
+        },
+        {
+          "value": "ur-PK",
+          "label": "乌尔都语 (Urdu)"
+        },
+        {
+          "value": "uz-UZ",
+          "label": "乌兹别克语 (Uzbek)"
+        },
+        {
+          "value": "vi-VN",
+          "label": "越南语 (Vietnamese)"
+        },
+        {
+          "value": "zu-ZA",
+          "label": "祖鲁语 (Zulu)"
+        }
+      ]
+    },
+    {
+      "key": "alternateApiEnabled",
+      "label": "启用替代 API 地址",
+      "type": "toggle",
+      "required": false,
+      "sensitive": false,
+      "defaultValue": false
+    },
+    {
+      "key": "apiBaseUrlPreset",
+      "label": "TMDb API 地址",
+      "type": "select",
+      "required": false,
+      "sensitive": false,
+      "description": "仅在启用替代 API 地址时使用；必须是无凭据的 HTTP(S) 地址。",
+      "options": [
+        {
+          "value": "official",
+          "label": "https://api.themoviedb.org"
+        },
+        {
+          "value": "alternate",
+          "label": "https://api.tmdb.org"
+        },
+        {
+          "value": "custom",
+          "label": "自定义"
+        }
+      ]
+    },
+    {
+      "key": "apiBaseUrl",
+      "label": "自定义 TMDb API 地址",
+      "type": "text",
+      "required": false,
+      "sensitive": false,
+      "defaultValue": "https://api.themoviedb.org",
+      "description": "选择自定义时填写基础地址；不要附带查询参数或片段。"
+    },
+    {
+      "key": "titleAliasReplacementEnabled",
+      "label": "标题别名替换",
+      "type": "toggle",
+      "required": false,
+      "sensitive": false,
+      "description": "当 TMDb 语言检索不到中文名称时，尝试使用中文别名替换。"
+    },
+    {
+      "key": "episodeGroupsEnabled",
+      "label": "启用剧集组刮削",
+      "type": "toggle",
+      "required": false,
+      "sensitive": false,
+      "defaultValue": false,
+      "description": "识别剧集时自动匹配 TMDb 剧集组，并把本地季/集号按组顺序翻译为真实剧集元数据。已识别的剧集会固定使用当时的剧集组。"
+    },
+    {
+      "key": "episodeGroupStrategy",
+      "label": "剧集组类型",
+      "type": "select",
+      "required": false,
+      "sensitive": false,
+      "defaultValue": "absolute",
+      "description": "自动选择剧集组时使用的类型。",
+      "options": [
+        {
+          "value": "absolute",
+          "label": "绝对顺序"
+        },
+        {
+          "value": "dvd",
+          "label": "DVD 顺序"
+        },
+        {
+          "value": "aired",
+          "label": "播出/TVDB 顺序"
+        }
+      ]
+    },
+    {
+      "key": "originalLanguagePosterEnabled",
+      "label": "原语言海报优先",
+      "type": "toggle",
+      "required": false,
+      "sensitive": false,
+      "defaultValue": true,
+      "description": "请求图片时并入条目的原始语言，并把原语言海报排在候选首位。"
+    }
+  ],
+  "permissions": {
+    "network": [
+      "api.themoviedb.org",
+      "api.tmdb.org",
+      "image.tmdb.org"
+    ],
+    "filesystem": [
+      "plugin-cache"
+    ]
+  },
+  "files": []
+}

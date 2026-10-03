@@ -8,10 +8,11 @@
 
 ## 插件商店安装
 
+本仓库的目录是**全量目录**：包含官方全部 11 个插件（安装包直接来自官方 Release）+ 本插件，共 12 个。
 在 Lux 管理后台把插件商店目录地址设置为：
 
 ```
-https://raw.githubusercontent.com/USBVillage/Lux-plugins-plus/main/index.json
+https://github.com/USBVillage/Lux-plugins-plus
 ```
 
 然后在插件商店中安装 **TMDb 元数据增强**，并将媒体库的刮削器切换为它。
